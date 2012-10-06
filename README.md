@@ -54,9 +54,9 @@ Here is the basic idea for how LD-in-Couch manages RDF triples in CouchDB docume
 
 ## Usage
 
-First, in case you haven't done already so, you want to [install Apache CouchDB](http://couchdb.apache.org/) and set it up, that is, create a user called `admin` with the password `admin`. Then you go and [install couchdbkit](http://couchdbkit.org/download.html). 
+First, in case you haven't done already so, you want to [install Apache CouchDB](http://couchdb.apache.org/) and set it up, that is, create a user called `admin` with the password `admin`. Then you go and [install couchdbkit](http://couchdbkit.org/download.html). Last but not least, you need to [create a view](http://guide.couchdb.org/draft/tour.html#mapreduce) in CouchDB, namely as shown in [`views/lookup-by_subject.txt`](https://raw.github.com/mhausenblas/ld-in-couch/master/views/lookup-by_subject.txt).
 
-After that you run once the import task, for example:
+After that, for each RDF Triples document you want to process, you run _once_ the import task, for example:
 
 	python ld-in-couch.py -i data/example_0.nt
 	2012-10-06T10:38:04 INFO --------------------------------------------------------------------------------
@@ -103,7 +103,7 @@ After that you run once the import task, for example:
 	2012-10-06T10:38:04 DEBUG  ... updated existing entity with ID ac595818ad836bcda35ea9c9eea6a789
 	2012-10-06T10:38:04 INFO Import completed. I've processed 6 triples and seen 3 subjects (incl. back-links).
 	
-So, this means the RDF NTriples document `[data/example_o0.nt](https://raw.github.com/mhausenblas/ld-in-couch/master/data/example_0.nt)` that looks as follows:
+So, this means the RDF NTriples document [`data/example_0.nt`](https://raw.github.com/mhausenblas/ld-in-couch/master/data/example_0.nt) that looks as follows:
 
 	<http://example.org/#m> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://xmlns.com/foaf/0.1/Person> .
 	<http://example.org/#m> <http://www.w3.org/2000/01/rdf-schema#label> "Michael" .
@@ -176,9 +176,15 @@ So, this means the RDF NTriples document `[data/example_o0.nt](https://raw.githu
 
 ... which is not really an entity but a pure back-link entry: there are neither property nor object values set but two entries in the `o_in` field, meaning that `http://xmlns.com/foaf/0.1/Person` occurs in object position twice.
 
+## To Do
+
+* proper NTriples parser
+* retain subject and object type (uri, bNode, literal)
+* SPARQL support
 
 ## Dependencies
 
+* [Apache CouchDB](http://couchdb.apache.org/) 
 * [couchdbkit](http://couchdbkit.org/)
 
 
