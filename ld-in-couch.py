@@ -26,7 +26,7 @@ import io
 from BaseHTTPServer import BaseHTTPRequestHandler
 from os import curdir, sep
 from couchdbkit import Server, Database, Document, StringProperty, DateTimeProperty, StringListProperty
-from restkit import BasicAuth
+from restkit import BasicAuth, set_logging
 
 # Configuration, change as you see fit
 DEBUG = True
@@ -148,6 +148,7 @@ class LDInCouchBinBackend(object):
 		self.username = username
 		self.pwd = pwd
 		self.server = Server(self.serverURL, filters=[BasicAuth(self.username, self.pwd)])
+		set_logging('info') # suppress DEBUG output of the couchdbkit/restkit
 	
 	# looks up a document via its ID 
 	def look_up_by_id(self, eid):
@@ -183,7 +184,8 @@ class LDInCouchBinBackend(object):
 	def import_NTriples(self, file_name):
 		triple_count = 1
 		subjects = [] # for remembering which subjects we've already seen
-		logging.info('Starting import ...\nProcessing NTriples file \'%s\'' %(file_name))
+		logging.info('Starting import ...')
+		logging.info('Processing NTriples file \'%s\'' %(file_name))
 		input_doc = open(file_name, "r")
 		db = self.server.get_or_create_db(self.dbname)
 		RDFEntity.set_db(db) # associate the document type with database
@@ -198,6 +200,7 @@ class LDInCouchBinBackend(object):
 			o = triple[2][1:-1] # get rid of the <> or "", naively assumes no bNodes for now
 			if not triple[2][0] == '<':
 				is_literal_object = True
+			logging.debug('-'*20)
 			logging.debug('#%d: S: %s P: %s O: %s' %(triple_count, s, p, o))
 			
 			# creating RDFEntity as we need
@@ -226,32 +229,28 @@ class LDInCouchBinBackend(object):
 			# setting back-links for non-literals in object position
 			if not is_literal_object: # make sure to remember non-literal objects via back-link
 				ref_eid = self.look_up_by_subject(o)  # ... check if already exists ...
-
+				
 				if ref_eid:
 					try:
 						doc = db.get(ref_eid)  # ... and update entity doc back-link
-						doc['o_in'].append(eid)
+						doc['o_in'].append(str(eid))
 						db.save_doc(doc)
-						logging.debug(' ... updated existing entity with ID %s' %eid)
+						logging.debug(' ... updated existing entity with ID %s with back-link %s' %(ref_eid, eid))
 					except Exception as err:
 						logging.error('ERROR while updating existing entity: %s' %err)
 				else:
 					subjects.append(o) # need to remember that we've now seen this object value already in subject position
 					try:
-						doc = RDFEntity(s = o,  p = [], o = [], o_in = [eid]) # ... or create a new back-link entity doc
+						doc = RDFEntity(s = o,  p = [''], o = [''], o_in = [str(eid)]) # ... or create a new back-link entity doc
 						doc.save()
-						logging.debug(' ... created new back-link entity with ID %s' %doc['_id'])
+						logging.debug(' ... created new back-link entity with ID %s with back-link %s' %(doc['_id'], eid))
 					except Exception as err:
-						logging.error('ERROR while creating entity: %s' %err)
-
-				# DB.create_doc( {
-				# 	"subject" : LINE.OBJECT,
-				# 	"object_in" : DOC._id
-				# })
+						logging.error('ERROR while creating back-link entity: %s' %err)
 			
-				
 			triple_count += 1
-
+			
+		logging.info('Import completed. I\'ve processed %d triples and seen %d subjects (incl. back-links).' %(triple_count, len(subjects)))
+	
 def usage():
 	print('Usage: python ld-in-couch.py -c $couchdbserverURL -u $couchdbUser -p $couchdbPwd')
 	print('To import an RDF NTriples document:')
