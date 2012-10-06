@@ -10,6 +10,7 @@
 import sys
 import logging
 import getopt
+import string
 import StringIO
 import urlparse
 import urllib
@@ -19,19 +20,19 @@ import cgi
 import time
 import datetime
 import json
+import io
 from BaseHTTPServer import BaseHTTPRequestHandler
 from os import curdir, sep
-from couchdbkit import Server, Database, Document, StringProperty, DateTimeProperty
+from couchdbkit import Server, Database, Document, StringProperty, DateTimeProperty, StringListProperty
 from restkit import BasicAuth
 
 # Configuration
-DEBUG = False
+DEBUG = True
 PORT = 7172
-
-port = PORT
-couchdbserver = 'http://127.0.0.1:5984/'
-couchdbusername = 'admin'
-couchdbpassword = 'admin'
+COUCHDB_SERVER = 'http://127.0.0.1:5984/'
+COUCHDB_DB = 'rdf'
+COUCHDB_USERNAME = 'admin'
+COUCHDB_PASSWORD = 'admin'
 
 if DEBUG:
 	FORMAT = '%(asctime)-0s %(levelname)s %(message)s [at line %(lineno)d]'
@@ -39,7 +40,6 @@ if DEBUG:
 else:
 	FORMAT = '%(asctime)-0s %(message)s'
 	logging.basicConfig(level=logging.INFO, format=FORMAT, datefmt='%Y-%m-%dT%I:%M:%S')
-
 
 # The main LD-in-Couch service
 class LDInCouchServer(BaseHTTPRequestHandler):
@@ -145,7 +145,7 @@ class LDInCouchBinBackend(object):
 		self.pwd = pwd
 		self.server = Server(self.serverURL, filters=[BasicAuth(self.username, self.pwd)])
 	
-	# adds a document to the database
+	# adds a triple to the database
 	def add(self, triple):
 		try:
 			db = self.server.get_or_create_db(self.dbname)
@@ -170,37 +170,56 @@ class LDInCouchBinBackend(object):
 		except Exception as err:
 			logging.error('Error while looking up entity: %s' %err)
 			return (False, None)
+			
+	# import and RDF NTriples file triple by triple into JSON documents
+	def import_NTriples(self, file_name):
+		logging.debug('Processing NTriples file %s' %file_name)
+		input_doc = open(file_name, "r")
+		for input_line in input_doc:
+			triple = input_line.split(' ') # naively assumes SPO is separated by a single whitespace, @@FIXME - employ real NTriples parser here!
+			logging.debug('Got triple %s %s %s' %(triple[0], triple[1], triple[2]))
 
 def usage():
-	print("Usage: python ld-in-couch.py -c {couchdbserverURL} -u {couchdbUser} -p {couchdbPwd}")
-	print("Example:")
-	print("Example: python ld-in-couch.py -c http://127.0.0.1:5984/ -u admin -p admin")
+	print('Usage: python ld-in-couch.py -c $couchdbserverURL -u $couchdbUser -p $couchdbPwd')
+	print('To import an RDF NTriples document:')
+	print(' python ld-in-couch.py -i data/example_0.nt')
+	print('To run the service (note: these are all defaults, so don\'t need to specify them):')
+	print(' python ld-in-couch.py -c http://127.0.0.1:5984/ -u admin -p admin')
 
 if __name__ == '__main__':
+	do_import = False
 	try:
 		# extract and validate options and their arguments
-		print("="*80)
-		opts, args = getopt.getopt(sys.argv[1:], "hc:u:p:v", ["help", "couchdbserver=", "username=", "password=", "verbose"])
+		logging.info('-'*80)
+		logging.info('*** CONIGURATION ***')
+		opts, args = getopt.getopt(sys.argv[1:], 'hi:c:u:p:', ['help', 'import=', 'couchdbserver=', 'username=', 'password='])
 		for opt, arg in opts:
-			if opt in ("-h", "--help"):
+			if opt in ('-h', '--help'):
 				usage()
 				sys.exit()
-			elif opt in ("-c", "--couchdbserver"):
+			elif opt in ('-i', '--import'):
+				input_file = arg
+				do_import = True
+			elif opt in ('-c', '--couchdbserver'):
 				couchdbserver = arg
-				logging.info("Using CouchDB server: %s" %couchdbserver)
-			elif opt in ("-u", "--username"):
+				logging.info('Using CouchDB server: %s' %couchdbserver)
+			elif opt in ('-u', '--username'):
 				couchdbusername = arg
-				logging.info("Using CouchDB username: %s" %couchdbusername)
-			elif opt in ("-p", "--password"): 
+				logging.info('Using CouchDB username: %s' %couchdbusername)
+			elif opt in ('-p', '--password'): 
 				couchdbpassword = arg
-				logging.info("Using CouchDB password: %s" %couchdbpassword)
-			elif opt in ("-v", "--verbose"): 
-				DEBUG = True
-		print("="*80)
-		from BaseHTTPServer import HTTPServer
-		server = HTTPServer(('', port), LDInCouchServer)
-		logging.info('LDInCouchServer started, use {Ctrl+C} to shut-down ...')
-		server.serve_forever()
+				logging.info('Using CouchDB password: %s' %couchdbpassword)
+		logging.info('-'*80)
+		
+		if do_import:
+			logging.debug("Importing %s into CouchDB" %input_file)
+			backend = LDInCouchBinBackend(serverURL = COUCHDB_SERVER , dbname = COUCHDB_DB, username = COUCHDB_USERNAME, pwd = COUCHDB_PASSWORD)
+			backend.import_NTriples(input_file)
+		else:
+			from BaseHTTPServer import HTTPServer
+			server = HTTPServer(('', PORT), LDInCouchServer)
+			logging.info('LDInCouchServer started listening on port %s, use {Ctrl+C} to shut-down ...' %PORT)
+			server.serve_forever()
 	except getopt.GetoptError, err:
 		print str(err)
 		usage()

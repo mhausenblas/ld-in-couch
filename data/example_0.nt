@@ -1,0 +1,5 @@
+<http://example.org/#m> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://xmlns.com/foaf/0.1/Person> .
+<http://example.org/#m> <http://www.w3.org/2000/01/rdf-schema#label> "Michael" .
+<http://example.org/#m> <http://xmlns.com/foaf/0.1/knows> <http://example.org/#r> .
+<http://example.org/#r> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://xmlns.com/foaf/0.1/Person> .
+<http://example.org/#r> <http://www.w3.org/2000/01/rdf-schema#label> "Richard" .
