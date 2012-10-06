@@ -51,6 +51,51 @@ Here is the basic idea for how LD-in-Couch manages RDF triples in CouchDB docume
 
 {2} See [CouchDB reference](http://wiki.apache.org/couchdb/Reference) for details
 
+
+## Usage
+
+First, in case you haven't done already so, you want to [install Apache CouchDB](http://couchdb.apache.org/) and set it up, that is, create a user called `admin` with the password `admin`. Then you go and [install couchdbkit](http://couchdbkit.org/download.html). 
+
+After that you run once the import task:
+
+	python ld-in-couch.py -i data/example_0.nt
+
+Now, head over to the Web interface and see if the documents have been created and then try the following:
+
+	curl http://127.0.0.1:5984/rdf/_design/lookup_by_subject/_view/lookup_by_subject
+
+... which should yield something like:
+
+	{
+		"total_rows": 2,
+		"offset": 0,
+		"rows": [{
+			"id": "91e30cf2427b98c1be46ca102e200c51",
+			"key": "http://example.org/#m",
+			"value": {
+				"_id": "91e30cf2427b98c1be46ca102e200c51",
+				"_rev": "1-fce05065572656630e58f9767151855a",
+				"doc_type": "RDFEntity",
+				"s": "http://example.org/#m",
+				"p": ["http://www.w3.org/1999/02/22-rdf-syntax-ns#type"],
+				"o": ["http://xmlns.com/foaf/0.1/Person"],
+				"o_in": []
+			}
+		}, {
+			"id": "91e30cf2427b98c1be46ca102e2006d6",
+			"key": "http://example.org/#r",
+			"value": {
+				"_id": "91e30cf2427b98c1be46ca102e2006d6",
+				"_rev": "1-bce3383fbec6f221c4687bf600ce977e",
+				"doc_type": "RDFEntity",
+				"s": "http://example.org/#r",
+				"p": ["http://www.w3.org/1999/02/22-rdf-syntax-ns#type"],
+				"o": ["http://xmlns.com/foaf/0.1/Person"],
+				"o_in": []
+			}
+		}]
+	}
+
 ## Dependencies
 
 * [couchdbkit](http://couchdbkit.org/)

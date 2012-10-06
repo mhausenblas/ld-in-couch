@@ -7,6 +7,8 @@
 @since: 2012-10-06
 @status: init
 """
+
+import os
 import sys
 import logging
 import getopt
@@ -128,7 +130,6 @@ class LDInCouchServer(BaseHTTPRequestHandler):
 
 # A single entity, expressed in RDF data model
 class RDFEntity(Document):
-	tstamp = DateTimeProperty() # last update
 	s = StringProperty() # the one and only subject
 	p = StringListProperty() # list of predicates
 	o = StringListProperty() # list of objects
@@ -145,19 +146,6 @@ class LDInCouchBinBackend(object):
 		self.pwd = pwd
 		self.server = Server(self.serverURL, filters=[BasicAuth(self.username, self.pwd)])
 	
-	# adds a triple to the database
-	def add(self, triple):
-		try:
-			db = self.server.get_or_create_db(self.dbname)
-			RDFEntity.set_db(db)
-			doc = RDFEntity(tstamp = datetime.datetime.utcnow(), s = triple['s'],  p = triple['p'], o = triple['o'], )
-			doc.save()
-			logging.debug('Added entity with ID %s' %doc['_id'])
-			return doc['_id']
-		except Exception as err:
-			logging.error('Error while adding entity: %s' %err)
-			return None
-	
 	# finds a document via its ID in the database
 	def find(self, eid):
 		try:
@@ -170,14 +158,43 @@ class LDInCouchBinBackend(object):
 		except Exception as err:
 			logging.error('Error while looking up entity: %s' %err)
 			return (False, None)
-			
-	# import and RDF NTriples file triple by triple into JSON documents
+	
+	# imports an RDF NTriples file triple by triple into JSON documents of RDFEntity type
+	# as of the pseudo-algorthim laid out in https://github.com/mhausenblas/ld-in-couch/blob/master/README.md
 	def import_NTriples(self, file_name):
-		logging.debug('Processing NTriples file %s' %file_name)
+		triple_count = 1
+		subjects = [] # for remembering which subjects we've already seen
+		logging.info('Starting import ...\nProcessing NTriples file \'%s\'' %(file_name))
 		input_doc = open(file_name, "r")
+		
+		# scan each line (triple) of the input document
 		for input_line in input_doc:
-			triple = input_line.split(' ') # naively assumes SPO is separated by a single whitespace, @@FIXME - employ real NTriples parser here!
-			logging.debug('Got triple %s %s %s' %(triple[0], triple[1], triple[2]))
+			 # parsing a triple @@FIXME: employ real NTriples parser here!
+			triple = input_line.split(' ') # naively assumes SPO is separated by a single whitespace
+			is_literal_object = False
+			s = triple[0][1:-1] # get rid of the <>, naively assumes no bNodes for now
+			p = triple[1][1:-1] # get rid of the <>
+			o = triple[2][1:-1] # get rid of the <> or "", naively assumes no bNodes for now
+			if not triple[2][0] == '<':
+				is_literal_object = True
+			logging.debug('#%d: S: %s P: %s O: %s' %(triple_count, s, p, o))
+			
+			# creating RDFEntity as we need
+			if not s in subjects: # a new resource, never seen in subject position before
+				logging.debug('%s is a resource I haven\'t seen in subject position, yet' %(s))
+				subjects.append(s)
+				try:
+					db = self.server.get_or_create_db(self.dbname)
+					RDFEntity.set_db(db)
+					doc = RDFEntity(s = s,  p = [p], o = [o], o_in = [])
+					doc.save()
+					logging.debug(' ... created new entity with ID %s' %doc['_id'])
+				except Exception as err:
+					logging.error('ERROR while creating entity: %s' %err)
+			else: # we've already seen the resource in subject position
+				logging.debug('I\'ve seen %s already in subject position' %(s))
+
+			triple_count += 1
 
 def usage():
 	print('Usage: python ld-in-couch.py -c $couchdbserverURL -u $couchdbUser -p $couchdbPwd')
@@ -198,7 +215,7 @@ if __name__ == '__main__':
 				usage()
 				sys.exit()
 			elif opt in ('-i', '--import'):
-				input_file = arg
+				input_file = os.path.abspath(arg)
 				do_import = True
 			elif opt in ('-c', '--couchdbserver'):
 				couchdbserver = arg
@@ -212,7 +229,6 @@ if __name__ == '__main__':
 		logging.info('-'*80)
 		
 		if do_import:
-			logging.debug("Importing %s into CouchDB" %input_file)
 			backend = LDInCouchBinBackend(serverURL = COUCHDB_SERVER , dbname = COUCHDB_DB, username = COUCHDB_USERNAME, pwd = COUCHDB_PASSWORD)
 			backend.import_NTriples(input_file)
 		else:
