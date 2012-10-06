@@ -162,11 +162,20 @@ class LDInCouchBinBackend(object):
 			logging.error('Error while looking up entity: %s' %err)
 			return (False, None)
 	
-	# finds an RDFEntity document by subject
+	# finds an RDFEntity document by subject and returns its ID, for example:
+	# curl 'http://127.0.0.1:5984/rdf/_design/lookup/_view/by_subject?key="http%3A//example.org/%23r"'
 	def look_up_by_subject(self, subject):
 		viewURL = ''.join([COUCHDB_SERVER, LOOKUP_BY_SUBJECT_PATH, '"', urllib.quote(subject),'"'])
 		logging.debug(' ... querying view %s ' %(viewURL))
-		# data = urllib.urlopen(remote_url)
+		doc = urllib.urlopen(viewURL)
+		doc = json.JSONDecoder().decode(doc.read())
+		if len(doc['rows']) > 0:
+			eid = doc['rows'][0]['id']
+			logging.debug('The entity document with %s in subject position has the ID %s' %(subject, eid))
+			return eid
+		else:
+			logging.debug('The entity document with %s in subject position does not exist, yet.' %(subject))
+			return None
 	
 	
 	# imports an RDF NTriples file triple by triple into JSON documents of RDFEntity type
@@ -176,6 +185,8 @@ class LDInCouchBinBackend(object):
 		subjects = [] # for remembering which subjects we've already seen
 		logging.info('Starting import ...\nProcessing NTriples file \'%s\'' %(file_name))
 		input_doc = open(file_name, "r")
+		db = self.server.get_or_create_db(self.dbname)
+		RDFEntity.set_db(db) # associate the document type with database
 		
 		# scan each line (triple) of the input document
 		for input_line in input_doc:
@@ -190,20 +201,54 @@ class LDInCouchBinBackend(object):
 			logging.debug('#%d: S: %s P: %s O: %s' %(triple_count, s, p, o))
 			
 			# creating RDFEntity as we need
-			if not s in subjects: # a new resource, never seen in subject position before
+			if not s in subjects: # a new resource, never seen in subject position before ...
 				logging.debug('%s is a resource I haven\'t seen in subject position, yet' %(s))
 				subjects.append(s)
 				try:
-					db = self.server.get_or_create_db(self.dbname)
-					RDFEntity.set_db(db)
-					doc = RDFEntity(s = s,  p = [p], o = [o], o_in = [])
+					doc = RDFEntity(s = s,  p = [p], o = [o], o_in = []) # ... so create a new entity doc
 					doc.save()
-					logging.debug(' ... created new entity with ID %s' %doc['_id'])
+					eid = doc['_id']
+					logging.debug(' ... created new entity with ID %s' %eid)
 				except Exception as err:
 					logging.error('ERROR while creating entity: %s' %err)
-			else: # we've already seen the resource in subject position
+			else: # we've already seen the resource in subject position ...
 				logging.debug('I\'ve seen %s already in subject position' %(s))
-				self.look_up_by_subject(s)
+				eid = self.look_up_by_subject(s)  # ... so look up existing entity doc by subject ...
+				try:
+					doc = db.get(eid)  # ... and update entity doc with new PO pair
+					doc['p'].append(p)
+					doc['o'].append(o)
+					db.save_doc(doc)
+					logging.debug(' ... updated existing entity with ID %s' %eid)
+				except Exception as err:
+					logging.error('ERROR while updating existing entity: %s' %err)
+			
+			# setting back-links for non-literals in object position
+			if not is_literal_object: # make sure to remember non-literal objects via back-link
+				ref_eid = self.look_up_by_subject(o)  # ... check if already exists ...
+
+				if ref_eid:
+					try:
+						doc = db.get(ref_eid)  # ... and update entity doc back-link
+						doc['o_in'].append(eid)
+						db.save_doc(doc)
+						logging.debug(' ... updated existing entity with ID %s' %eid)
+					except Exception as err:
+						logging.error('ERROR while updating existing entity: %s' %err)
+				else:
+					subjects.append(o) # need to remember that we've now seen this object value already in subject position
+					try:
+						doc = RDFEntity(s = o,  p = [], o = [], o_in = [eid]) # ... or create a new back-link entity doc
+						doc.save()
+						logging.debug(' ... created new back-link entity with ID %s' %doc['_id'])
+					except Exception as err:
+						logging.error('ERROR while creating entity: %s' %err)
+
+				# DB.create_doc( {
+				# 	"subject" : LINE.OBJECT,
+				# 	"object_in" : DOC._id
+				# })
+			
 				
 			triple_count += 1
 
