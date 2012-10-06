@@ -41,7 +41,7 @@ Here is the basic idea for how LD-in-Couch manages RDF triples in CouchDB docume
 			
 		if not isLiteral(LINE.OBJECT):		# make sure to remember the resource object via back-link
 			
-			DB.create_doc( {
+			DB.create_or_update_doc( {
 				"subject" : LINE.OBJECT,
 				"object_in" : DOC._id
 			})
@@ -56,45 +56,126 @@ Here is the basic idea for how LD-in-Couch manages RDF triples in CouchDB docume
 
 First, in case you haven't done already so, you want to [install Apache CouchDB](http://couchdb.apache.org/) and set it up, that is, create a user called `admin` with the password `admin`. Then you go and [install couchdbkit](http://couchdbkit.org/download.html). 
 
-After that you run once the import task:
+After that you run once the import task, for example:
 
 	python ld-in-couch.py -i data/example_0.nt
+	2012-10-06T10:38:04 INFO --------------------------------------------------------------------------------
+	2012-10-06T10:38:04 INFO *** CONIGURATION ***
+	2012-10-06T10:38:04 INFO --------------------------------------------------------------------------------
+	2012-10-06T10:38:04 INFO Starting import ...
+	2012-10-06T10:38:04 INFO Processing NTriples file '/Users/michau/Documents/dev/ld-in-couch/data/example_0.nt'
+	2012-10-06T10:38:04 DEBUG --------------------
+	2012-10-06T10:38:04 DEBUG #1: S: http://example.org/#m P: http://www.w3.org/1999/02/22-rdf-syntax-ns#type O: http://xmlns.com/foaf/0.1/Person
+	2012-10-06T10:38:04 DEBUG http://example.org/#m is a resource I haven't seen in subject position, yet
+	2012-10-06T10:38:04 DEBUG  ... created new entity with ID ac595818ad836bcda35ea9c9eea6b73a
+	2012-10-06T10:38:04 DEBUG  ... querying view http://127.0.0.1:5984/rdf/_design/lookup/_view/by_subject?key="http%3A//xmlns.com/foaf/0.1/Person"
+	2012-10-06T10:38:04 DEBUG The entity document with http://xmlns.com/foaf/0.1/Person in subject position does not exist, yet.
+	2012-10-06T10:38:04 DEBUG  ... created new back-link entity with ID ac595818ad836bcda35ea9c9eea6a82f with back-link ac595818ad836bcda35ea9c9eea6b73a
+	2012-10-06T10:38:04 DEBUG --------------------
+	2012-10-06T10:38:04 DEBUG #2: S: http://example.org/#m P: http://www.w3.org/2000/01/rdf-schema#label O: Michael
+	2012-10-06T10:38:04 DEBUG I've seen http://example.org/#m already in subject position
+	2012-10-06T10:38:04 DEBUG  ... querying view http://127.0.0.1:5984/rdf/_design/lookup/_view/by_subject?key="http%3A//example.org/%23m"
+	2012-10-06T10:38:04 DEBUG The entity document with http://example.org/#m in subject position has the ID ac595818ad836bcda35ea9c9eea6b73a
+	2012-10-06T10:38:04 DEBUG  ... updated existing entity with ID ac595818ad836bcda35ea9c9eea6b73a
+	2012-10-06T10:38:04 DEBUG --------------------
+	2012-10-06T10:38:04 DEBUG #3: S: http://example.org/#m P: http://xmlns.com/foaf/0.1/knows O: http://example.org/#r
+	2012-10-06T10:38:04 DEBUG I've seen http://example.org/#m already in subject position
+	2012-10-06T10:38:04 DEBUG  ... querying view http://127.0.0.1:5984/rdf/_design/lookup/_view/by_subject?key="http%3A//example.org/%23m"
+	2012-10-06T10:38:04 DEBUG The entity document with http://example.org/#m in subject position has the ID ac595818ad836bcda35ea9c9eea6b73a
+	2012-10-06T10:38:04 DEBUG  ... updated existing entity with ID ac595818ad836bcda35ea9c9eea6b73a
+	2012-10-06T10:38:04 DEBUG  ... querying view http://127.0.0.1:5984/rdf/_design/lookup/_view/by_subject?key="http%3A//example.org/%23r"
+	2012-10-06T10:38:04 DEBUG The entity document with http://example.org/#r in subject position does not exist, yet.
+	2012-10-06T10:38:04 DEBUG  ... created new back-link entity with ID ac595818ad836bcda35ea9c9eea6a789 with back-link ac595818ad836bcda35ea9c9eea6b73a
+	2012-10-06T10:38:04 DEBUG --------------------
+	2012-10-06T10:38:04 DEBUG #4: S: http://example.org/#r P: http://www.w3.org/1999/02/22-rdf-syntax-ns#type O: http://xmlns.com/foaf/0.1/Person
+	2012-10-06T10:38:04 DEBUG I've seen http://example.org/#r already in subject position
+	2012-10-06T10:38:04 DEBUG  ... querying view http://127.0.0.1:5984/rdf/_design/lookup/_view/by_subject?key="http%3A//example.org/%23r"
+	2012-10-06T10:38:04 DEBUG The entity document with http://example.org/#r in subject position has the ID ac595818ad836bcda35ea9c9eea6a789
+	2012-10-06T10:38:04 DEBUG  ... updated existing entity with ID ac595818ad836bcda35ea9c9eea6a789
+	2012-10-06T10:38:04 DEBUG  ... querying view http://127.0.0.1:5984/rdf/_design/lookup/_view/by_subject?key="http%3A//xmlns.com/foaf/0.1/Person"
+	2012-10-06T10:38:04 DEBUG The entity document with http://xmlns.com/foaf/0.1/Person in subject position has the ID ac595818ad836bcda35ea9c9eea6a82f
+	2012-10-06T10:38:04 DEBUG  ... updated existing entity with ID ac595818ad836bcda35ea9c9eea6a82f with back-link ac595818ad836bcda35ea9c9eea6a789
+	2012-10-06T10:38:04 DEBUG --------------------
+	2012-10-06T10:38:04 DEBUG #5: S: http://example.org/#r P: http://www.w3.org/2000/01/rdf-schema#label O: Richard
+	2012-10-06T10:38:04 DEBUG I've seen http://example.org/#r already in subject position
+	2012-10-06T10:38:04 DEBUG  ... querying view http://127.0.0.1:5984/rdf/_design/lookup/_view/by_subject?key="http%3A//example.org/%23r"
+	2012-10-06T10:38:04 DEBUG The entity document with http://example.org/#r in subject position has the ID ac595818ad836bcda35ea9c9eea6a789
+	2012-10-06T10:38:04 DEBUG  ... updated existing entity with ID ac595818ad836bcda35ea9c9eea6a789
+	2012-10-06T10:38:04 INFO Import completed. I've processed 6 triples and seen 3 subjects (incl. back-links).
+	
+So, this means the RDF NTriples document `[data/example_o0.nt](https://raw.github.com/mhausenblas/ld-in-couch/master/data/example_0.nt)` that looks as follows:
 
-Now, head over to the Web interface and see if the documents have been created and then try the following:
+	<http://example.org/#m> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://xmlns.com/foaf/0.1/Person> .
+	<http://example.org/#m> <http://www.w3.org/2000/01/rdf-schema#label> "Michael" .
+	<http://example.org/#m> <http://xmlns.com/foaf/0.1/knows> <http://example.org/#r> .
+	<http://example.org/#r> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://xmlns.com/foaf/0.1/Person> .
+	<http://example.org/#r> <http://www.w3.org/2000/01/rdf-schema#label> "Richard" .
 
-	curl http://127.0.0.1:5984/rdf/_design/lookup_by_subject/_view/lookup_by_subject
+... has been mapped to three JSON documents in CouchDB that are akin to:
+	
+	{
+	   "_id": "ac595818ad836bcda35ea9c9eea6b73a",
+	   "_rev": "3-fd84df7c2cdb28c9a280ad97041de9d8",
+	   "doc_type": "RDFEntity",
+	   "s": "http://example.org/#m",
+	   "p": [
+	       "http://www.w3.org/1999/02/22-rdf-syntax-ns#type",
+	       "http://www.w3.org/2000/01/rdf-schema#label",
+	       "http://xmlns.com/foaf/0.1/knows"
+	   ],
+	   "o_in": [
+	   ],
+	   "o": [
+	       "http://xmlns.com/foaf/0.1/Person",
+	       "Michael",
+	       "http://example.org/#r"
+	   ]
+	}
 
-... which should yield something like:
+... which represents the first entity identified by `http://example.org/#m`, and:
+
 
 	{
-		"total_rows": 2,
-		"offset": 0,
-		"rows": [{
-			"id": "91e30cf2427b98c1be46ca102e200c51",
-			"key": "http://example.org/#m",
-			"value": {
-				"_id": "91e30cf2427b98c1be46ca102e200c51",
-				"_rev": "1-fce05065572656630e58f9767151855a",
-				"doc_type": "RDFEntity",
-				"s": "http://example.org/#m",
-				"p": ["http://www.w3.org/1999/02/22-rdf-syntax-ns#type"],
-				"o": ["http://xmlns.com/foaf/0.1/Person"],
-				"o_in": []
-			}
-		}, {
-			"id": "91e30cf2427b98c1be46ca102e2006d6",
-			"key": "http://example.org/#r",
-			"value": {
-				"_id": "91e30cf2427b98c1be46ca102e2006d6",
-				"_rev": "1-bce3383fbec6f221c4687bf600ce977e",
-				"doc_type": "RDFEntity",
-				"s": "http://example.org/#r",
-				"p": ["http://www.w3.org/1999/02/22-rdf-syntax-ns#type"],
-				"o": ["http://xmlns.com/foaf/0.1/Person"],
-				"o_in": []
-			}
-		}]
+	   "_id": "ac595818ad836bcda35ea9c9eea6a789",
+	   "_rev": "3-412f313e0e27ef6271d2127b34e5aa79",
+	   "doc_type": "RDFEntity",
+	   "s": "http://example.org/#r",
+	   "p": [
+	       "",
+	       "http://www.w3.org/1999/02/22-rdf-syntax-ns#type",
+	       "http://www.w3.org/2000/01/rdf-schema#label"
+	   ],
+	   "o_in": [
+	       "ac595818ad836bcda35ea9c9eea6b73a"
+	   ],
+	   "o": [
+	       "",
+	       "http://xmlns.com/foaf/0.1/Person",
+	       "Richard"
+	   ]
 	}
+
+... which represents the second entity identified by `http://example.org/#m=r`, as well as:
+
+	{
+	   "_id": "ac595818ad836bcda35ea9c9eea6a82f",
+	   "_rev": "2-273821052cbbcb689243edfba4a3df42",
+	   "doc_type": "RDFEntity",
+	   "s": "http://xmlns.com/foaf/0.1/Person",
+	   "p": [
+	       ""
+	   ],
+	   "o_in": [
+	       "ac595818ad836bcda35ea9c9eea6b73a",
+	       "ac595818ad836bcda35ea9c9eea6a789"
+	   ],
+	   "o": [
+	       ""
+	   ]
+	}
+
+... which is not really an entity but a pure back-link entry: there are neither property nor object values set but two entries in the `o_in` field, meaning that `http://xmlns.com/foaf/0.1/Person` occurs in object position twice.
+
 
 ## Dependencies
 

@@ -233,7 +233,7 @@ class LDInCouchBinBackend(object):
 				if ref_eid:
 					try:
 						doc = db.get(ref_eid)  # ... and update entity doc back-link
-						doc['o_in'].append(str(eid))
+						doc['o_in'].append(eid)
 						db.save_doc(doc)
 						logging.debug(' ... updated existing entity with ID %s with back-link %s' %(ref_eid, eid))
 					except Exception as err:
@@ -241,7 +241,7 @@ class LDInCouchBinBackend(object):
 				else:
 					subjects.append(o) # need to remember that we've now seen this object value already in subject position
 					try:
-						doc = RDFEntity(s = o,  p = [''], o = [''], o_in = [str(eid)]) # ... or create a new back-link entity doc
+						doc = RDFEntity(s = o,  p = [], o = [], o_in = [eid]) # ... or create a new back-link entity doc
 						doc.save()
 						logging.debug(' ... created new back-link entity with ID %s with back-link %s' %(doc['_id'], eid))
 					except Exception as err:
