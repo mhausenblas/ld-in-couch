@@ -28,13 +28,16 @@ from os import curdir, sep
 from couchdbkit import Server, Database, Document, StringProperty, DateTimeProperty, StringListProperty
 from restkit import BasicAuth
 
-# Configuration
+# Configuration, change as you see fit
 DEBUG = True
 PORT = 7172
 COUCHDB_SERVER = 'http://127.0.0.1:5984/'
 COUCHDB_DB = 'rdf'
 COUCHDB_USERNAME = 'admin'
 COUCHDB_PASSWORD = 'admin'
+
+# CouchDB views, don't touch unless you know what you're doing
+LOOKUP_BY_SUBJECT_PATH = 'rdf/_design/lookup/_view/by_subject?key='
 
 if DEBUG:
 	FORMAT = '%(asctime)-0s %(levelname)s %(message)s [at line %(lineno)d]'
@@ -146,8 +149,8 @@ class LDInCouchBinBackend(object):
 		self.pwd = pwd
 		self.server = Server(self.serverURL, filters=[BasicAuth(self.username, self.pwd)])
 	
-	# finds a document via its ID in the database
-	def find(self, eid):
+	# looks up a document via its ID 
+	def look_up_by_id(self, eid):
 		try:
 			db = self.server.get_or_create_db(self.dbname)
 			if db.doc_exist(eid):
@@ -158,6 +161,13 @@ class LDInCouchBinBackend(object):
 		except Exception as err:
 			logging.error('Error while looking up entity: %s' %err)
 			return (False, None)
+	
+	# finds an RDFEntity document by subject
+	def look_up_by_subject(self, subject):
+		viewURL = ''.join([COUCHDB_SERVER, LOOKUP_BY_SUBJECT_PATH, '"', urllib.quote(subject),'"'])
+		logging.debug(' ... querying view %s ' %(viewURL))
+		# data = urllib.urlopen(remote_url)
+	
 	
 	# imports an RDF NTriples file triple by triple into JSON documents of RDFEntity type
 	# as of the pseudo-algorthim laid out in https://github.com/mhausenblas/ld-in-couch/blob/master/README.md
@@ -193,7 +203,8 @@ class LDInCouchBinBackend(object):
 					logging.error('ERROR while creating entity: %s' %err)
 			else: # we've already seen the resource in subject position
 				logging.debug('I\'ve seen %s already in subject position' %(s))
-
+				self.look_up_by_subject(s)
+				
 			triple_count += 1
 
 def usage():
