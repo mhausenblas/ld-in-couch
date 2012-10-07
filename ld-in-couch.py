@@ -133,6 +133,7 @@ class LDInCouchServer(BaseHTTPRequestHandler):
 
 # A single entity, expressed in RDF data model
 class RDFEntity(Document):
+	g = StringProperty() # the graph this entity belongs to
 	s = StringProperty() # the one and only subject
 	p = StringListProperty() # list of predicates
 	o = StringListProperty() # list of objects
@@ -165,31 +166,35 @@ class LDInCouchBinBackend(object):
 	
 	# finds an RDFEntity document by subject and returns its ID, for example:
 	# curl 'http://127.0.0.1:5984/rdf/_design/lookup/_view/by_subject?key="http%3A//example.org/%23r"'
-	def look_up_by_subject(self, subject):
-		viewURL = ''.join([COUCHDB_SERVER, LOOKUP_BY_SUBJECT_PATH, '"', urllib.quote(subject),'"'])
+	def look_up_by_subject(self, subject, in_graph):
+		viewURL = ''.join([COUCHDB_SERVER, LOOKUP_BY_SUBJECT_PATH, '"', urllib.quote(subject), urllib.quote(in_graph), '"'])
 		logging.debug(' ... querying view %s ' %(viewURL))
 		doc = urllib.urlopen(viewURL)
 		doc = json.JSONDecoder().decode(doc.read())
 		if len(doc['rows']) > 0:
 			eid = doc['rows'][0]['id']
-			logging.debug('The entity document with %s in subject position has the ID %s' %(subject, eid))
+			logging.debug('Entity with %s in subject position (in graph %s) has the ID %s' %(subject, in_graph, eid))
 			return eid
 		else:
-			logging.debug('The entity document with %s in subject position does not exist, yet.' %(subject))
+			logging.debug('Entity with %s in subject position does not exist, yet in graph %s' %(subject, in_graph))
 			return None
 	
 	
 	# imports an RDF NTriples file triple by triple into JSON documents of RDFEntity type
 	# as of the pseudo-algorthim laid out in https://github.com/mhausenblas/ld-in-couch/blob/master/README.md
-	def import_NTriples(self, file_name):
+	def import_NTriples(self, file_name, target_graph):
 		triple_count = 1
 		subjects = [] # for remembering which subjects we've already seen
 		logging.info('Starting import ...')
-		logging.info('Processing NTriples file \'%s\'' %(file_name))
 		input_doc = open(file_name, "r")
 		db = self.server.get_or_create_db(self.dbname)
 		RDFEntity.set_db(db) # associate the document type with database
 		
+		if(not target_graph):
+			target_graph = file_name
+		
+		logging.info('Importing NTriples file \'%s\' into graph <%s>' %(file_name, target_graph))
+			
 		# scan each line (triple) of the input document
 		for input_line in input_doc:
 			 # parsing a triple @@FIXME: employ real NTriples parser here!
@@ -208,7 +213,7 @@ class LDInCouchBinBackend(object):
 				logging.debug('%s is a resource I haven\'t seen in subject position, yet' %(s))
 				subjects.append(s)
 				try:
-					doc = RDFEntity(s = s,  p = [p], o = [o], o_in = []) # ... so create a new entity doc
+					doc = RDFEntity(g=target_graph, s=s,  p=[p], o=[o], o_in=[]) # ... so create a new entity doc
 					doc.save()
 					eid = doc['_id']
 					logging.debug(' ... created new entity with ID %s' %eid)
@@ -216,7 +221,7 @@ class LDInCouchBinBackend(object):
 					logging.error('ERROR while creating entity: %s' %err)
 			else: # we've already seen the resource in subject position ...
 				logging.debug('I\'ve seen %s already in subject position' %(s))
-				eid = self.look_up_by_subject(s)  # ... so look up existing entity doc by subject ...
+				eid = self.look_up_by_subject(s, target_graph)  # ... so look up existing entity doc by subject ...
 				try:
 					doc = db.get(eid)  # ... and update entity doc with new PO pair
 					doc['p'].append(p)
@@ -228,7 +233,7 @@ class LDInCouchBinBackend(object):
 			
 			# setting back-links for non-literals in object position
 			if not is_literal_object: # make sure to remember non-literal objects via back-link
-				ref_eid = self.look_up_by_subject(o)  # ... check if already exists ...
+				ref_eid = self.look_up_by_subject(o, target_graph)  # ... check if already exists ...
 				
 				if ref_eid:
 					try:
@@ -241,7 +246,7 @@ class LDInCouchBinBackend(object):
 				else:
 					subjects.append(o) # need to remember that we've now seen this object value already in subject position
 					try:
-						doc = RDFEntity(s = o,  p = [], o = [], o_in = [eid]) # ... or create a new back-link entity doc
+						doc = RDFEntity(g=target_graph, s=o,  p=[], o=[], o_in =[eid]) # ... or create a new back-link entity doc
 						doc.save()
 						logging.debug(' ... created new back-link entity with ID %s with back-link %s' %(doc['_id'], eid))
 					except Exception as err:
@@ -253,18 +258,19 @@ class LDInCouchBinBackend(object):
 	
 def usage():
 	print('Usage: python ld-in-couch.py -c $couchdbserverURL -u $couchdbUser -p $couchdbPwd')
-	print('To import an RDF NTriples document:')
+	print('To import an RDF NTriples document (can specify target graph with -g if you want to):')
 	print(' python ld-in-couch.py -i data/example_0.nt')
 	print('To run the service (note: these are all defaults, so don\'t need to specify them):')
 	print(' python ld-in-couch.py -c http://127.0.0.1:5984/ -u admin -p admin')
 
 if __name__ == '__main__':
 	do_import = False
+	target_graph = ''
 	try:
 		# extract and validate options and their arguments
 		logging.info('-'*80)
-		logging.info('*** CONIGURATION ***')
-		opts, args = getopt.getopt(sys.argv[1:], 'hi:c:u:p:', ['help', 'import=', 'couchdbserver=', 'username=', 'password='])
+		logging.info('*** CONFIGURATION ***')
+		opts, args = getopt.getopt(sys.argv[1:], 'hi:g:c:u:p:', ['help', 'import=', 'graph=', 'couchdbserver=', 'username=', 'password='])
 		for opt, arg in opts:
 			if opt in ('-h', '--help'):
 				usage()
@@ -272,6 +278,8 @@ if __name__ == '__main__':
 			elif opt in ('-i', '--import'):
 				input_file = os.path.abspath(arg)
 				do_import = True
+			elif opt in ('-g', '--graph'):
+				target_graph = arg
 			elif opt in ('-c', '--couchdbserver'):
 				couchdbserver = arg
 				logging.info('Using CouchDB server: %s' %couchdbserver)
@@ -285,7 +293,7 @@ if __name__ == '__main__':
 		
 		if do_import:
 			backend = LDInCouchBinBackend(serverURL = COUCHDB_SERVER , dbname = COUCHDB_DB, username = COUCHDB_USERNAME, pwd = COUCHDB_PASSWORD)
-			backend.import_NTriples(input_file)
+			backend.import_NTriples(input_file, target_graph)
 		else:
 			from BaseHTTPServer import HTTPServer
 			server = HTTPServer(('', PORT), LDInCouchServer)

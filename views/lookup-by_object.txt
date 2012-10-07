@@ -2,6 +2,6 @@ http://127.0.0.1:5984/rdf/_design/lookup/_view/by_object
 
 function(doc) {
   if(doc.doc_type == 'RDFEntity' && doc.o) {
-   emit(doc.o, doc);
+   emit(doc.o+doc.g, doc);
  }
 }

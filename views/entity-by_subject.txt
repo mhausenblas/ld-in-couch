@@ -5,30 +5,32 @@ function(doc) {
   if(doc.doc_type == 'RDFEntity') {
    for(var i = 0; i < doc.p.length; i++) {
     if(doc.o[i].indexOf('http') == 0)
-     val.push([ {s: doc.s,  p: doc.p[i], o : doc.o[i], o_type : 'uri' } ]);
+     val.push([ {g: doc.g, s: doc.s,  p: doc.p[i], o : doc.o[i], o_type : 'uri' } ]);
     else
-     val.push([ {s: doc.s,  p: doc.p[i], o : doc.o[i], o_type : 'literal' } ]);
+     val.push([ {g: doc.g, s: doc.s,  p: doc.p[i], o : doc.o[i], o_type : 'literal' } ]);
    }
-   emit(doc.s, val);
+   emit(doc.s+doc.g, val);
  }
 }
 
-EXAMPLE: http://127.0.0.1:5984/rdf/_design/entity/_view/by_subject?key="http%3A//example.org/%23r"
+EXAMPLE: http://127.0.0.1:5984/rdf/_design/entity/_view/by_subject?key="http%3A//example.org/%23rhttp://example.org"
 
 {
-	"total_rows": 3,
-	"offset": 1,
+	"total_rows": 6,
+	"offset": 3,
 	"rows": [{
-		"id": "ac595818ad836bcda35ea9c9eee5dfdb",
-		"key": "http://example.org/#r",
+		"id": "ea479b6dad91e36e1cefac33b57acb53",
+		"key": "http://example.org/#rhttp://example.org",
 		"value": [
 			[{
+				"g": "http://example.org",
 				"s": "http://example.org/#r",
 				"p": "http://www.w3.org/1999/02/22-rdf-syntax-ns#type",
 				"o": "http://xmlns.com/foaf/0.1/Person",
 				"o_type": "uri"
 			}],
 			[{
+				"g": "http://example.org",
 				"s": "http://example.org/#r",
 				"p": "http://www.w3.org/2000/01/rdf-schema#label",
 				"o": "Richard",
@@ -37,3 +39,4 @@ EXAMPLE: http://127.0.0.1:5984/rdf/_design/entity/_view/by_subject?key="http%3A/
 		]
 	}]
 }
+

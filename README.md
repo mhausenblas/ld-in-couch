@@ -20,12 +20,12 @@ First, in case you haven't done already so, you want to [install Apache CouchDB]
 
 After that, for each RDF Triples document you want to process, you run _once_ the import task, for example:
 
-	python ld-in-couch.py -i data/example_0.nt
+	$ python ld-in-couch.py -i data/example_0.nt -g http://example.org
 	2012-10-06T10:38:04 INFO --------------------------------------------------------------------------------
-	2012-10-06T10:38:04 INFO *** CONIGURATION ***
+	2012-10-06T10:38:04 INFO *** CONFIGURATION ***
 	2012-10-06T10:38:04 INFO --------------------------------------------------------------------------------
 	2012-10-06T10:38:04 INFO Starting import ...
-	2012-10-06T10:38:04 INFO Processing NTriples file '/Users/michau/Documents/dev/ld-in-couch/data/example_0.nt'
+	2012-10-06T10:38:04 INFO Importing NTriples file '/Users/michau/Documents/dev/ld-in-couch/data/example_0.nt' into graph <http://example.org>
 	2012-10-06T10:38:04 DEBUG --------------------
 	2012-10-06T10:38:04 DEBUG #1: S: http://example.org/#m P: http://www.w3.org/1999/02/22-rdf-syntax-ns#type O: http://xmlns.com/foaf/0.1/Person
 	2012-10-06T10:38:04 DEBUG http://example.org/#m is a resource I haven't seen in subject position, yet
@@ -65,11 +65,47 @@ After that, for each RDF Triples document you want to process, you run _once_ th
 	2012-10-06T10:38:04 DEBUG  ... updated existing entity with ID ac595818ad836bcda35ea9c9eea6a789
 	2012-10-06T10:38:04 INFO Import completed. I've processed 6 triples and seen 3 subjects (incl. back-links).
 
+Now you could, for example, look up the entity `http://example.org/#m` in the graph `http://example.org` like so:
+
+	curl 'http://127.0.0.1:5984/rdf/_design/entity/_view/by_subject?key="http%3A//example.org/%23mhttp://example.org"'
+
+	{
+		"total_rows": 6,
+		"offset": 1,
+		"rows": [{
+			"id": "ea479b6dad91e36e1cefac33b57ad884",
+			"key": "http://example.org/#mhttp://example.org",
+			"value": [
+				[{
+					"g": "http://example.org",
+					"s": "http://example.org/#m",
+					"p": "http://www.w3.org/1999/02/22-rdf-syntax-ns#type",
+					"o": "http://xmlns.com/foaf/0.1/Person",
+					"o_type": "uri"
+				}],
+				[{
+					"g": "http://example.org",
+					"s": "http://example.org/#m",
+					"p": "http://www.w3.org/2000/01/rdf-schema#label",
+					"o": "Michael",
+					"o_type": "literal"
+				}],
+				[{
+					"g": "http://example.org",
+					"s": "http://example.org/#m",
+					"p": "http://xmlns.com/foaf/0.1/knows",
+					"o": "http://example.org/#r",
+					"o_type": "uri"
+				}]
+			]
+		}]
+	}
+
+
 ## To Do
 
-* add graph field to record provenance
 * retain subject and object type (uri, bNode, literal)
-* add o_in_with_p to record with which predicate the resources is back-linked
+* add `o_in__with_p` to record with which predicate the resources is back-linked
 * proper NTriples parser
 * SPARQL support
 
