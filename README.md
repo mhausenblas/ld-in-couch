@@ -67,7 +67,7 @@ After that, for each RDF Triples document you want to process, you run _once_ th
 
 Now you could, for example, look up the entity `http://example.org/#m` in the graph `http://example.org` like so:
 
-	curl 'http://127.0.0.1:5984/rdf/_design/entity/_view/by_subject?key="http%3A//example.org/%23mhttp://example.org"'
+	$ curl 'http://127.0.0.1:5984/rdf/_design/entity/_view/by_subject?key="http%3A//example.org/%23mhttp://example.org"'
 
 	{
 		"total_rows": 6,
@@ -104,10 +104,10 @@ Now you could, for example, look up the entity `http://example.org/#m` in the gr
 
 ## To Do
 
-* retain subject and object type (uri, bNode, literal)
-* add `o_in__with_p` to record with which predicate the resources is back-linked
-* proper NTriples parser
-* SPARQL support
+* retain subject and object type (add uri, bNode, literal flags)
+* add `o_in__with_p` to record with which predicate the resource is back-linked
+* use proper NTriples parser, for example, [Sean's impl](http://inamidst.com/proj/rdf/ntriples.py)
+* SPARQL support, for example through [fyzz](http://hg.logilab.org/fyzz/file/tip/yappsparser/parser.py)
 
 ## Dependencies
 
