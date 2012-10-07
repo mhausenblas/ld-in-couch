@@ -178,8 +178,10 @@ So, this means the RDF NTriples document [`data/example_0.nt`](https://raw.githu
 
 ## To Do
 
-* proper NTriples parser
+* add graph field to record provenance
 * retain subject and object type (uri, bNode, literal)
+* add o_in_with_p to record with which predicate the resources is back-linked
+* proper NTriples parser
 * SPARQL support
 
 ## Dependencies
