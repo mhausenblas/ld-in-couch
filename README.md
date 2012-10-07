@@ -16,9 +16,9 @@ See the Wiki page [Mapping RDF to JSON documents](https://github.com/mhausenblas
 
 ## Usage
 
-First, in case you haven't done already so, you want to [install Apache CouchDB](http://couchdb.apache.org/) and set it up, that is, create a user called `admin` with the password `admin`. Then you go and [install couchdbkit](http://couchdbkit.org/download.html). Last but not least, you need to [create a view](http://guide.couchdb.org/draft/tour.html#mapreduce) in CouchDB, namely as shown in [`views/lookup-by_subject.txt`](https://raw.github.com/mhausenblas/ld-in-couch/master/views/lookup-by_subject.txt).
+First, in case you haven't already done so, you want to [install Apache CouchDB](http://couchdb.apache.org/) and set it up, that is, create a user called `admin` with the password `admin` - alternatively you can update the main script with the [username](https://github.com/mhausenblas/ld-in-couch/blob/master/ld-in-couch.py#L36) and [password](https://github.com/mhausenblas/ld-in-couch/blob/master/ld-in-couch.py#L37) you want to use. Then you go and [install couchdbkit](http://couchdbkit.org/download.html). Last but not least, you need to [create a view](http://guide.couchdb.org/draft/tour.html#mapreduce) in CouchDB, namely as shown in [`views/lookup-by_subject.txt`](https://raw.github.com/mhausenblas/ld-in-couch/master/views/lookup-by_subject.txt).
 
-After that, for each RDF Triples document you want to process, you run _once_ the import task, for example:
+After all that, you're good to go. Now, for each RDF Triples document you want to process, you run _once_ the import task, for example:
 
 	$ python ld-in-couch.py -i data/example_0.nt -g http://example.org
 	2012-10-06T10:38:04 INFO --------------------------------------------------------------------------------
